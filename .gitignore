@@ -2,6 +2,7 @@
 **/.terraform/*
 
 key1.json
+.terraform.lock.hcl
 
 # .tfstate files
 *.tfstate
