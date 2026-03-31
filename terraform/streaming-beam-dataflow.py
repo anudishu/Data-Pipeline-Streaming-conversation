@@ -1,33 +1,52 @@
-#run with python streaming-beam-dataflow.py 
-
 import apache_beam as beam
 from apache_beam.io.gcp.pubsub import ReadFromPubSub
 from apache_beam.io.gcp.bigquery import WriteToBigQuery
 import json
 from apache_beam.options.pipeline_options import PipelineOptions
+import argparse
 
-#Define your Dataflow pipeline options
-options = PipelineOptions(
-    runner='DirectRunner',   #for Dataflow job change to runner='DataflowRunner'
-    project='projecta-418002',
-    region='US',   #for Dataflow job change to 'us-west1'
-    temp_location='gs://my-bucket-etl-1987/temp',
-    staging_location='gs://my-bucket-etl-1987/staging',
-    streaming=True,  #Enable streaming mode
-    #Dataflow parameters that are optional
-    #job_name='streaming-conversations',  #Set the Dataflow job name here
-    #num_workers=3,  #Specify the number of workers
-    #max_num_workers=10,  #Specify the maximum number of workers
-    #disk_size_gb=100,  #Specify the disk size in GB per worker
-    #autoscaling_algorithm='THROUGHPUT_BASED',  #Specify the autoscaling algorithm
-    #machine_type='n1-standard-4',  #Specify the machine type for the workers
-    #service_account_email='streaming-job@streaming-project-415718.iam.gserviceaccount.com'  #Specify the service account email, add these roles: BigQuery Admin, Dataflow Worker, Pub/Sub Admin, Storage Object Viewer 
-)
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Streaming Pub/Sub -> BigQuery pipeline (Apache Beam).")
+    parser.add_argument("--subscription", required=True, help="Pub/Sub subscription path: projects/<p>/subscriptions/<s>")
+    parser.add_argument("--bq_conversations_table", required=True, help="<project>:<dataset>.<table>")
+    parser.add_argument("--bq_orders_table", required=True, help="<project>:<dataset>.<table>")
+    parser.add_argument(
+        "--runner",
+        default="DirectRunner",
+        choices=["DirectRunner", "DataflowRunner"],
+        help="Execution runner. Use DataflowRunner for managed Dataflow.",
+    )
+    parser.add_argument("--project", default=None, help="GCP project for the runner (recommended for DataflowRunner).")
+    parser.add_argument("--region", default=None, help="GCP region (required for DataflowRunner).")
+    parser.add_argument("--temp_location", default=None, help="GCS temp location, e.g. gs://<bucket>/temp")
+    parser.add_argument("--staging_location", default=None, help="GCS staging location, e.g. gs://<bucket>/staging")
+    parser.add_argument("--job_name", default=None, help="Dataflow job name (DataflowRunner only).")
+    return parser.parse_args()
+
+
+args = _parse_args()
+
+pipeline_args = [
+    f"--runner={args.runner}",
+    "--streaming",
+]
+if args.project:
+    pipeline_args.append(f"--project={args.project}")
+if args.region:
+    pipeline_args.append(f"--region={args.region}")
+if args.temp_location:
+    pipeline_args.append(f"--temp_location={args.temp_location}")
+if args.staging_location:
+    pipeline_args.append(f"--staging_location={args.staging_location}")
+if args.job_name:
+    pipeline_args.append(f"--job_name={args.job_name}")
+
+options = PipelineOptions(pipeline_args)
 
 #Define your Beam pipeline
 with beam.Pipeline(options=options) as pipeline:
     #Read the input data from Pub/Sub
-    messages = pipeline | ReadFromPubSub(subscription='projects/projecta-418002/subscriptions/submessages')
+    messages = pipeline | ReadFromPubSub(subscription=args.subscription)
 
     #Parse the JSON messages
     parsed_messages = messages | beam.Map(lambda msg: json.loads(msg))
@@ -78,7 +97,7 @@ with beam.Pipeline(options=options) as pipeline:
 
     #Write the conversations data to the 'conversations' table in BigQuery
     conversations_data | 'Write conversations to BigQuery' >> WriteToBigQuery(
-        table='projecta-418002:dataset.conversations',
+        table=args.bq_conversations_table,
         schema=conversations_schema,
         create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND
@@ -86,7 +105,7 @@ with beam.Pipeline(options=options) as pipeline:
 
     #Write the orders data to the 'orders' table in BigQuery
     orders_data | 'Write orders to BigQuery' >> WriteToBigQuery(
-        table='projecta-418002:dataset.orders',
+        table=args.bq_orders_table,
         schema=orders_schema,
         create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND

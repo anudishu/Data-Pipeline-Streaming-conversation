@@ -1,12 +1,12 @@
 # Local .terraform directories
 **/.terraform/*
 
-key1.json
 .terraform.lock.hcl
 
 # .tfstate files
 *.tfstate
 *.tfstate.*
+*.tfplan
 
 # Crash log files
 crash.log
@@ -35,3 +35,50 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# --- Secrets / credentials ---
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.kdb
+*.keystore
+*.ovpn
+*.jwt
+*service-account*.json
+*sa-key*.json
+*credentials*.json
+*cred*.json
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Google Cloud SDK local state (avoid accidental commits)
+.config/gcloud/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

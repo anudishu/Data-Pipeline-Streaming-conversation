@@ -1,0 +1,17 @@
+## Copy to terraform.tfvars and fill values.
+## Note: bucket_name must be globally unique.
+
+project_id  = "your-gcp-project-id"
+region      = "us-central1"
+zone        = "us-central1-a"
+
+bucket_name = "your-unique-bucket-name"
+
+dataset_id  = "chat_streaming"
+
+topic_name         = "topic-conversation"
+subscription_name  = "submessages"
+
+table_conversations_name = "conversations"
+table_orders_name        = "orders"
+

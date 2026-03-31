@@ -1,4 +1,5 @@
-CREATE VIEW `projecta-418002.myetldataset.customer_courier_conversations_view` AS
+-- Replace YOUR_PROJECT_ID and YOUR_DATASET before running.
+CREATE VIEW `YOUR_PROJECT_ID.YOUR_DATASET.customer_courier_conversations_view` AS
 SELECT
   o.orderId AS order_id,
   o.cityCode AS city_code,
@@ -38,9 +39,9 @@ SELECT
   MAX(m.messageSentTime) AS last_message_time,
   last_stage_table.orderStage AS last_message_order_stage
 FROM
-  `projecta-418002.myetldataset.orders` AS o
+  `YOUR_PROJECT_ID.YOUR_DATASET.orders` AS o
 JOIN
-  `projecta-418002.myetldataset.conversations` AS m
+  `YOUR_PROJECT_ID.YOUR_DATASET.conversations` AS m
 ON
   o.orderId = m.orderId
 LEFT JOIN (
@@ -55,7 +56,7 @@ LEFT JOIN (
       orderStage,
       ROW_NUMBER() OVER (PARTITION BY orderId ORDER BY messageSentTime DESC) as rn
     FROM
-      `projecta-418002.myetldataset.conversations`
+      `YOUR_PROJECT_ID.YOUR_DATASET.conversations`
   ) WHERE rn = 1
 ) AS last_stage_table
 ON
