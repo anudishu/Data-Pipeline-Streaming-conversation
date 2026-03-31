@@ -1,4 +1,4 @@
-# Streaming Chat Conversations on GCP (Pub/Sub → Dataflow → BigQuery)
+# Building a Simple Data Pipeline for Streaming Chat Conversations on GCP using terraform
 
 This repo is a practical, end-to-end example of a **streaming** pipeline on Google Cloud. It ingests chat-style JSON events, publishes them to **Pub/Sub**, transforms them in **Apache Beam** running on **Dataflow**, and stores curated records in **BigQuery** for analytics (and optional **Looker** dashboards).
 
