@@ -8,8 +8,9 @@ If you want the original walkthrough that inspired this repo, see the video: `ht
 
 - **Infrastructure as Code (Terraform)** to create:
   - GCS bucket (and upload the sample `conversations.json`)
-  - Pub/Sub topic + subscription
+  - Pub/Sub topic + pull subscription (with retry + dead-letter routing)
   - BigQuery dataset + two tables: `conversations`, `orders`
+  - Optional API enablement, labels, and a dedicated runtime service account with the usual Dataflow/Pub/Sub/BigQuery/GCS bindings
 - **Streaming pipeline (Python/Beam)**:
   - reads messages from Pub/Sub
   - writes to BigQuery tables
@@ -26,7 +27,7 @@ More detail (roles, data contracts, ops notes): see `docs/ARCHITECTURE.md`.
 ## Repo layout
 
 - `terraform/`: Terraform and pipeline scripts
-  - `main.tf`, `variables.tf`
+  - `main.tf`, `variables.tf`, `locals.tf`, `apis.tf`, `iam.tf`, `outputs.tf`
   - `conversations.json` (sample dataset)
   - `streaming-beam-dataflow.py` (Beam pipeline)
   - `send-data-to-pubsub.py` (publisher)
@@ -118,7 +119,8 @@ python streaming-beam-dataflow.py \
   --subscription projects/YOUR_PROJECT_ID/subscriptions/YOUR_SUBSCRIPTION \
   --bq_conversations_table YOUR_PROJECT_ID:YOUR_DATASET.conversations \
   --bq_orders_table YOUR_PROJECT_ID:YOUR_DATASET.orders \
-  --job_name streaming-chat-$(date +%Y%m%d-%H%M%S)
+  --job_name streaming-chat-$(date +%Y%m%d-%H%M%S) \
+  --service_account_email "$(terraform output -raw pipeline_service_account_email)"
 ```
 
 Notes:
@@ -176,9 +178,13 @@ terraform destroy
 
 Also stop any running Dataflow job from the Dataflow UI (streaming jobs won’t stop automatically).
 
+### Dataflow job submitter permissions
+
+If Dataflow rejects the job when using the Terraform-managed service account, your principal usually needs **`roles/iam.serviceAccountUser`** on that service account (or an equivalent custom role) so you can `actAs` it during job creation.
+
 ## Production notes (what to improve)
 
-- **Dead-lettering**: route malformed JSON to a DLQ topic / GCS for reprocessing.
+- **Dead-lettering**: Pub/Sub already lands repeated failures on a dead-letter topic; still add explicit handling in Beam for JSON parse errors if you want those separated from transport-level retries.
 - **Schema evolution**: manage BigQuery schemas intentionally (versioned schemas, migration strategy).
 - **Windowed aggregations**: use Beam windowing/triggers for time-based metrics (response time, message counts).
 - **Observability**: add structured logging, error counters, and alerting on pipeline lag/backlog.

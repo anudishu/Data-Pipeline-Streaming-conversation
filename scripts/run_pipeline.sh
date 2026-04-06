@@ -50,12 +50,15 @@ ORD_TABLE="${project_id}:${dataset_id}.orders"
 
 JOB_NAME="streaming-chat-$(date +%Y%m%d-%H%M%S)"
 
+PIPELINE_SA="$(cd "${TF_DIR}" && terraform output -raw pipeline_service_account_email)"
+
 log ""
 log "Starting streaming pipeline on Dataflow:"
 log "  subscription: ${SUB_PATH}"
 log "  conversations: ${CONV_TABLE}"
 log "  orders:        ${ORD_TABLE}"
 log "  job_name:      ${JOB_NAME}"
+log "  sa:            ${PIPELINE_SA}"
 log ""
 
 (
@@ -70,6 +73,7 @@ log ""
     --subscription "${SUB_PATH}" \
     --bq_conversations_table "${CONV_TABLE}" \
     --bq_orders_table "${ORD_TABLE}" \
-    --job_name "${JOB_NAME}"
+    --job_name "${JOB_NAME}" \
+    --service_account_email "${PIPELINE_SA}"
 )
 

@@ -21,6 +21,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--temp_location", default=None, help="GCS temp location, e.g. gs://<bucket>/temp")
     parser.add_argument("--staging_location", default=None, help="GCS staging location, e.g. gs://<bucket>/staging")
     parser.add_argument("--job_name", default=None, help="Dataflow job name (DataflowRunner only).")
+    parser.add_argument(
+        "--service_account_email",
+        default=None,
+        help="Worker service account email (DataflowRunner).",
+    )
     return parser.parse_args()
 
 
@@ -40,18 +45,16 @@ if args.staging_location:
     pipeline_args.append(f"--staging_location={args.staging_location}")
 if args.job_name:
     pipeline_args.append(f"--job_name={args.job_name}")
+if args.service_account_email:
+    pipeline_args.append(f"--service_account_email={args.service_account_email}")
 
 options = PipelineOptions(pipeline_args)
 
-#Define your Beam pipeline
 with beam.Pipeline(options=options) as pipeline:
-    #Read the input data from Pub/Sub
     messages = pipeline | ReadFromPubSub(subscription=args.subscription)
 
-    #Parse the JSON messages
     parsed_messages = messages | beam.Map(lambda msg: json.loads(msg))
 
-    #Extract the desired fields for 'conversations' table
     conversations_data = parsed_messages | beam.Map(lambda data: {
         'senderAppType': data.get('senderAppType', 'N/A'),
         'courierId': data.get('courierId', None),
@@ -62,17 +65,13 @@ with beam.Pipeline(options=options) as pipeline:
         'orderStage': data.get('orderStage', 'N/A'),
         'customerId': data.get('customerId', None),
         'messageSentTime': data.get('messageSentTime', None),
-        #only elements with both fields present are processed further in the pipeline
     }) | beam.Filter(lambda data: data['orderId'] is not None and data['customerId'] is not None)
 
-    #Extract the desired fields for 'orders' table
     orders_data = parsed_messages | beam.Map(lambda data: {
         'cityCode': data.get('cityCode', 'N/A'),
         'orderId': data.get('orderId', None),
-        #only elements that satisfy both conditions (non-None 'orderId' and 'cityCode' not equal to 'N/A') will pass through the filter and continue to the subsequent steps in the pipeline
     }) | beam.Filter(lambda data: data['orderId'] is not None and data['cityCode'] != 'N/A')
 
-    #Define the schema for the 'conversations' table
     conversations_schema = {
         'fields': [
             {'name': 'senderAppType', 'type': 'STRING'},
@@ -87,7 +86,6 @@ with beam.Pipeline(options=options) as pipeline:
         ]
     }
 
-    #Define the schema for the 'orders' table
     orders_schema = {
         'fields': [
             {'name': 'cityCode', 'type': 'STRING'},
@@ -95,7 +93,6 @@ with beam.Pipeline(options=options) as pipeline:
         ]
     }
 
-    #Write the conversations data to the 'conversations' table in BigQuery
     conversations_data | 'Write conversations to BigQuery' >> WriteToBigQuery(
         table=args.bq_conversations_table,
         schema=conversations_schema,
@@ -103,7 +100,6 @@ with beam.Pipeline(options=options) as pipeline:
         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND
     )
 
-    #Write the orders data to the 'orders' table in BigQuery
     orders_data | 'Write orders to BigQuery' >> WriteToBigQuery(
         table=args.bq_orders_table,
         schema=orders_schema,

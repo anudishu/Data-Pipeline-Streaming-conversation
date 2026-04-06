@@ -28,3 +28,13 @@ output "bigquery_orders_table" {
   description = "BigQuery orders table id."
 }
 
+output "pipeline_service_account_email" {
+  value       = google_service_account.pipeline.email
+  description = "Service account intended for Dataflow workers in this demo."
+}
+
+output "pubsub_dead_letter_topic" {
+  value       = google_pubsub_topic.subscription_dead_letter.name
+  description = "Pub/Sub topic receiving poison messages from the primary subscription."
+}
+

@@ -15,3 +15,15 @@ subscription_name  = "submessages"
 table_conversations_name = "conversations"
 table_orders_name        = "orders"
 
+environment           = "dev"
+owner_label           = "data-eng"
+enable_project_apis   = true
+pipeline_service_account_id = "streaming-pipeline-sa"
+
+bucket_temp_cleanup_age_days          = 14
+bucket_soft_delete_retention_seconds  = 604800
+pubsub_ack_deadline_seconds           = 20
+pubsub_retry_minimum_backoff          = "10s"
+pubsub_retry_maximum_backoff          = "600s"
+pubsub_max_delivery_attempts          = 10
+

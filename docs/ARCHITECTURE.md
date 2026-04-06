@@ -11,6 +11,7 @@ This project models a common real-time analytics pattern: **events come in fast*
 2. **Messaging layer (Pub/Sub)**
    - A topic receives individual events (messages).
    - A subscription is used by the streaming pipeline to read messages with at-least-once delivery.
+   - A separate dead-letter topic catches messages that exceed the subscription delivery attempt budget (transport-level safety net).
 
 3. **Stream processing (Dataflow / Apache Beam)**
    - Beam pipeline reads raw Pub/Sub messages.
