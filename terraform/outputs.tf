@@ -38,3 +38,13 @@ output "pubsub_dead_letter_topic" {
   description = "Pub/Sub topic receiving poison messages from the primary subscription."
 }
 
+output "pubsub_dead_letter_subscription" {
+  value       = var.create_dead_letter_subscription ? google_pubsub_subscription.dead_letter_audit[0].name : null
+  description = "Optional subscription attached to the dead-letter topic for inspection or replay tooling."
+}
+
+output "pubsub_pipeline_parse_errors_topic_id" {
+  value       = google_pubsub_topic.pipeline_parse_errors.id
+  description = "Full resource id (projects/.../topics/...) for Beam --errors_topic (parse + unroutable records)."
+}
+

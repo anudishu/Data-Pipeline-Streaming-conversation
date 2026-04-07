@@ -1,3 +1,4 @@
-apache-beam[gcp]==2.57.0
-google-cloud-pubsub==2.27.0
-google-cloud-storage==2.19.0
+# Apache Beam 2.57 metadata still expects pkg_resources (removed in setuptools 82+).
+setuptools>=68,<82
+# Editable install of the streaming pipeline library (Beam, Pub/Sub, GCS, BigQuery).
+-e ../chat_pipeline[gcp]

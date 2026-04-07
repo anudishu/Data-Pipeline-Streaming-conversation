@@ -36,11 +36,13 @@ if [[ ! -d "${VENV_DIR}" ]]; then
   (cd "${TF_DIR}" && python3 -m venv .venv)
 fi
 
-log "Installing Python dependencies"
+log "Installing Python dependencies (editable chat_pipeline + GCP extras)"
 (
   cd "${TF_DIR}"
   source .venv/bin/activate
   pip install --upgrade pip >/dev/null
+  # Apache Beam 2.57 wheel metadata expects setuptools/pkg_resources in the build env.
+  export PIP_NO_BUILD_ISOLATION=1
   pip install -r requirements.txt
 )
 
@@ -51,12 +53,14 @@ ORD_TABLE="${project_id}:${dataset_id}.orders"
 JOB_NAME="streaming-chat-$(date +%Y%m%d-%H%M%S)"
 
 PIPELINE_SA="$(cd "${TF_DIR}" && terraform output -raw pipeline_service_account_email)"
+ERR_TOPIC="$(cd "${TF_DIR}" && terraform output -raw pubsub_pipeline_parse_errors_topic_id)"
 
 log ""
 log "Starting streaming pipeline on Dataflow:"
 log "  subscription: ${SUB_PATH}"
 log "  conversations: ${CONV_TABLE}"
 log "  orders:        ${ORD_TABLE}"
+log "  errors_topic:    ${ERR_TOPIC}"
 log "  job_name:      ${JOB_NAME}"
 log "  sa:            ${PIPELINE_SA}"
 log ""
@@ -73,6 +77,7 @@ log ""
     --subscription "${SUB_PATH}" \
     --bq_conversations_table "${CONV_TABLE}" \
     --bq_orders_table "${ORD_TABLE}" \
+    --errors_topic "${ERR_TOPIC}" \
     --job_name "${JOB_NAME}" \
     --service_account_email "${PIPELINE_SA}"
 )

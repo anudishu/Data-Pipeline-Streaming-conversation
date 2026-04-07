@@ -1,30 +1,15 @@
-from google.cloud import pubsub_v1
+#!/usr/bin/env python3
+"""
+Create a Pub/Sub topic and subscription if they do not exist.
 
-#Set your Google Cloud project ID
-project_id = "projecta-418002"
+Prefer Terraform for production; this script is useful for quick labs.
+"""
 
-#Set the topic and subscription names
-topic_name = "topic-conversation"
-subscription_name = "submessages"
+from __future__ import annotations
 
-#Create a publisher client
-publisher_client = pubsub_v1.PublisherClient()
+import sys
 
-#Create a topic
-topic_path = publisher_client.topic_path(project_id, topic_name)
-topic = publisher_client.create_topic(request={"name": topic_path})
+from chat_stream_pipeline.admin_pubsub import main
 
-print(f"Topic created: {topic.name}")
-
-#Create a subscriber client
-subscriber_client = pubsub_v1.SubscriberClient()
-
-#Create a subscription
-subscription_path = subscriber_client.subscription_path(project_id, subscription_name)
-subscription = subscriber_client.create_subscription(request={"name": subscription_path, "topic": topic_path})
-
-print(f"Subscription created: {subscription.name}")
-
-#an example of the output
-#Topic created: projects/streaming-project-415718/topics/topic-conversations
-#Subscription created: projects/streaming-project-415718/subscriptions/submessages
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

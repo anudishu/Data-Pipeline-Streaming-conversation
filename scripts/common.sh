@@ -72,6 +72,7 @@ Next steps:
 - Start the streaming Dataflow pipeline: scripts/run_pipeline.sh
 - Publish sample events:               scripts/publish_sample.sh
 - Validate results in BigQuery:        scripts/validate.sh
+- Optional health snapshot:            scripts/health_check.sh
 
 EOF
 }

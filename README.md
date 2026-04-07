@@ -26,13 +26,17 @@ More detail (roles, data contracts, ops notes): see `docs/ARCHITECTURE.md`.
 
 ## Repo layout
 
-- `terraform/`: Terraform and pipeline scripts
+- `chat_pipeline/`: installable Python package (`chat-stream-pipeline`) with the full implementation
+  - Beam transforms (parse errors + unroutable records → optional Pub/Sub topic), BigQuery writes, validation, publisher, sample generator, health CLI
+  - `pytest` suite under `chat_pipeline/tests/`
+- `terraform/`: Terraform and thin CLI wrappers that call the library
   - `main.tf`, `variables.tf`, `locals.tf`, `apis.tf`, `iam.tf`, `outputs.tf`
+  - `pubsub_pipeline_errors.tf` (application-level parse/unroutable topic for Beam)
   - `conversations.json` (sample dataset)
-  - `streaming-beam-dataflow.py` (Beam pipeline)
-  - `send-data-to-pubsub.py` (publisher)
+  - `streaming-beam-dataflow.py`, `send-data-to-pubsub.py`, `validate_dataset_shapes.py` (wrappers)
+  - `test_validate_dataset_shapes.py` (stdlib `unittest` smoke tests)
   - `create-view.sql` (analytics view)
-- `scripts/`: helper scripts to deploy/run/validate quickly
+- `scripts/`: helper scripts to deploy/run/validate quickly (`health_check.sh` for Pub/Sub + BigQuery smoke checks)
 - `docs/ARCHITECTURE.md`: system design + production notes
 
 ## Prerequisites
@@ -65,6 +69,7 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ./scripts/run_pipeline.sh
 ./scripts/publish_sample.sh
 ./scripts/validate.sh
+./scripts/health_check.sh
 ```
 
 ### 1) Configure Terraform variables
@@ -89,6 +94,14 @@ terraform init
 terraform apply
 ```
 
+Sanity-check the bundled sample file (optional):
+
+```bash
+cd terraform
+python3 validate_dataset_shapes.py --path conversations.json --fail-on-unknown
+python3 test_validate_dataset_shapes.py
+```
+
 Tip: after apply, you can print the created resource names with:
 
 ```bash
@@ -105,6 +118,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+`requirements.txt` installs the local package from `../chat_pipeline[gcp]` in editable mode so Beam, Pub/Sub, GCS, and BigQuery clients stay aligned.
+
 ### 4) Start the streaming pipeline (DataflowRunner)
 
 This launches a streaming Dataflow job that reads Pub/Sub and writes to BigQuery.
@@ -119,9 +134,12 @@ python streaming-beam-dataflow.py \
   --subscription projects/YOUR_PROJECT_ID/subscriptions/YOUR_SUBSCRIPTION \
   --bq_conversations_table YOUR_PROJECT_ID:YOUR_DATASET.conversations \
   --bq_orders_table YOUR_PROJECT_ID:YOUR_DATASET.orders \
+  --errors_topic "$(terraform output -raw pubsub_pipeline_parse_errors_topic_id)" \
   --job_name streaming-chat-$(date +%Y%m%d-%H%M%S) \
   --service_account_email "$(terraform output -raw pipeline_service_account_email)"
 ```
+
+Omit `--errors_topic` if you only want counters/metrics for bad JSON (no Pub/Sub sink).
 
 Notes:
 - Dataflow creates worker service accounts behind the scenes; if you use a custom service account, make sure it has **Dataflow Worker**, **Pub/Sub Subscriber**, **BigQuery Data Editor**, and **Storage Object Admin** (or tighter equivalents).
@@ -182,9 +200,21 @@ Also stop any running Dataflow job from the Dataflow UI (streaming jobs won’t 
 
 If Dataflow rejects the job when using the Terraform-managed service account, your principal usually needs **`roles/iam.serviceAccountUser`** on that service account (or an equivalent custom role) so you can `actAs` it during job creation.
 
+## Local tests (library)
+
+With a virtualenv that has `chat_pipeline` installed (`pip install -e "../chat_pipeline[gcp,dev]"` from `terraform/` or `chat_pipeline/`):
+
+```bash
+cd chat_pipeline
+python3 -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip "setuptools>=68,<82" wheel
+pip install -e ".[gcp,dev]" --no-build-isolation
+pytest -q
+```
+
 ## Production notes (what to improve)
 
-- **Dead-lettering**: Pub/Sub already lands repeated failures on a dead-letter topic; still add explicit handling in Beam for JSON parse errors if you want those separated from transport-level retries.
+- **Dead-lettering**: Transport-level DLQ is configured on the primary subscription; Beam now publishes parse failures and unroutable JSON to `pubsub_pipeline_parse_errors_topic_id` when you pass `--errors_topic`.
 - **Schema evolution**: manage BigQuery schemas intentionally (versioned schemas, migration strategy).
 - **Windowed aggregations**: use Beam windowing/triggers for time-based metrics (response time, message counts).
 - **Observability**: add structured logging, error counters, and alerting on pipeline lag/backlog.

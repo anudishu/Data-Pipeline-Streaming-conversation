@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chat-stream-pipeline"
+version = "1.0.0"
+description = "End-to-end streaming chat pipeline: Pub/Sub, Apache Beam/Dataflow, BigQuery."
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Data Pipeline Demo" }]
+dependencies = []
+
+[project.optional-dependencies]
+gcp = [
+  "apache-beam[gcp]==2.57.0",
+  "google-cloud-pubsub==2.27.0",
+  "google-cloud-storage==2.19.0",
+  "google-cloud-bigquery==3.25.0",
+]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+]
+
+[project.scripts]
+chat-pipeline = "chat_stream_pipeline.cli:main"
+chat-publish = "chat_stream_pipeline.publisher_cli:main"
+chat-validate-dataset = "chat_stream_pipeline.validate:main"
+chat-health = "chat_stream_pipeline.health:main"
+chat-generate-sample = "chat_stream_pipeline.data_generator:main"
+chat-admin-pubsub = "chat_stream_pipeline.admin_pubsub:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -102,3 +102,23 @@ variable "pubsub_max_delivery_attempts" {
   type    = number
   default = 10
 }
+
+variable "create_dead_letter_subscription" {
+  type    = bool
+  default = true
+}
+
+variable "dead_letter_subscription_name" {
+  type    = string
+  default = "submessages-dlq-audit"
+}
+
+variable "dead_letter_sub_ack_deadline_seconds" {
+  type    = number
+  default = 60
+}
+
+variable "dead_letter_sub_message_retention_duration" {
+  type    = string
+  default = "604800s"
+}

@@ -27,3 +27,8 @@ pubsub_retry_minimum_backoff          = "10s"
 pubsub_retry_maximum_backoff          = "600s"
 pubsub_max_delivery_attempts          = 10
 
+create_dead_letter_subscription          = true
+dead_letter_subscription_name            = "submessages-dlq-audit"
+dead_letter_sub_ack_deadline_seconds     = 60
+dead_letter_sub_message_retention_duration = "604800s"
+
